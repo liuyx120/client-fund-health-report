@@ -6,12 +6,14 @@
 - 运行要求：Python 3.10+，依赖 `lxml`（`pip install -r requirements.txt`）
 - 入口：[`SKILL.md`](SKILL.md)
 
-## 一键安装（通用 Skill 目录）
+## 一键安装
 
-在 Agent 对应的用户技能目录下执行：
+**豆包类 / Codex / WorkBuddy / 扣子 / OpenClaw 各平台的一键安装口令见 [INSTALL.md](INSTALL.md)。**
+
+通用 Skill 目录下执行：
 
 ```bash
-git clone https://github.com/<你的GitHub用户名>/client-fund-health-report.git
+git clone https://github.com/liuyx120/client-fund-health-report.git
 ```
 
 安装后**新建一个会话**以重新扫描技能。升级：进入该目录执行 `git pull`。
