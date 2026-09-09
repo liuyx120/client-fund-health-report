@@ -1,0 +1,7 @@
+interface:
+  display_name: "客户基金资产配置健诊报告"
+  short_description: "根据客户基金持仓和可选产品生成固定版式 Word 健诊报告"
+  icon_large: "./assets/preview.png"
+  default_prompt: "Use $client-fund-health-report to create a Chinese Word portfolio health report from the provided holdings, eligible products, and adjustment requirements."
+policy:
+  allow_implicit_invocation: true
