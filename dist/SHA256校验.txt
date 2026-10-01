@@ -1,8 +1,2 @@
-客户基金资产配置健诊报告Skill_Codex_v1.0.0.zip
-93fc8f993c6ad92a6e8068a7f87e3a4816275d04f0ffbdf24b801f2f2f041c24
-
-客户基金资产配置健诊报告Skill_WorkBuddy_v1.0.0.zip
-025ff284a33e2270e5f42895d146bb86a6ce7cacb095ab02a7a1424651c11892
-
-客户基金资产配置健诊报告Skill_豆包扣子_v1.0.0.zip
-cb72281f709f486fa03d9495c4706d8ce5c704303eec9037ab3200100159d953
+客户基金资产配置健诊报告Skill_v1.1.5.zip
+20886199f61412c7bb81d757525ddd9cd18053949079bedc98ba78646cf8b4a3

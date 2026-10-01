@@ -23,7 +23,7 @@ mkdir -p ~/.codex/skills && cd ~/.codex/skills && git clone https://github.com/l
 ## 扣子 / 扣子编程（在"上传技能包"处导入此 zip）
 
 ```
-https://github.com/liuyx120/client-fund-health-report/raw/main/dist/客户基金资产配置健诊报告Skill_豆包扣子_v1.0.0.zip
+https://github.com/liuyx120/client-fund-health-report/raw/main/dist/客户基金资产配置健诊报告Skill_v1.1.5.zip
 ```
 
 ## OpenClaw（终端执行）
