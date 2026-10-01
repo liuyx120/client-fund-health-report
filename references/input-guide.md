@@ -43,8 +43,10 @@
 
 生成程序读取 UTF-8 JSON。顶层字段：
 
-- `paragraphs`：正文段落，键名见示例；所有字段均应提供。
+- `paragraphs`：正文段落，键名见示例；所有字段均应提供。其中 `review_part1_heading`、`outlook_part2_heading` 为两个一级标题（分别写“一、{上月}资本市场运行复盘”“二、{本月}市场观察与后续展望”），`comparison_heading` 为市场对比小节标题（固定为“（五）市场调整背景下的持仓对比”）。
 - `holdings`：持仓数组。每项包括 `name`、`cost_wan`、`value_wan`、`return_pct`、`category`、`weight_pct`。
+- `asset_allocation`：最新已披露季报口径的组合大类资产穿透数组。每项包括 `category`、`amount_wan`、`weight_pct`、`source`。
+- `industry_allocation`：最新已披露季报前十大重仓股识别口径的行业穿透数组。每项包括 `industry_source`、`amount_wan`、`portfolio_pct`、`identified_pct`。
 - `indices`：指数数组。每项包括 `market`、`name_code`、`month_return_pct`、`two_month_return_pct`。
 - `operations`：操作总览。每项包括 `product`、`status`、`advice`，可选 `status_value` 用于按正负着色。
 - `holding_details`：逐只存量建议的完整段落数组。
@@ -56,3 +58,5 @@
 比例可使用数值或已格式化字符串；建议数值字段使用数值，由程序统一显示百分号。金额单位统一为万元。表格总计行由程序根据 `holdings` 自动生成，但正文和操作建议中的金额仍需自行核对。
 
 正文使用的来源编号应与 `sources.label` 一致。每个具体持仓和调入产品建议应是完整自然段，并以“产品名（代码）。”开头，程序将第一个句号前的内容加粗。
+
+`paragraphs` 中还必须提供 `asset_note`、`industry_heading`、`industry_note` 和 `execution_heading`。其中 `execution_heading` 通常为“3. 操作节奏”，程序会直接复制“2. 调入产品”的组内小标题样式，不套用二级标题。
