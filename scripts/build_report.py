@@ -27,6 +27,15 @@ RED = "FF0000"
 GREEN = "269773"
 NEUTRAL = "333333"
 
+MANDATORY_DISCLAIMER = (
+    '本报告基于客户提供的持仓信息及公开数据编制，所载内容及观点仅供参考，不构成任何投资建议或收益承诺。'
+    '基金有风险，投资需谨慎。基金的过往业绩及其净值高低并不预示其未来业绩表现，基金管理人管理的其他基金业绩亦不构成本基金业绩表现的保证。'
+    '报告中的资产配置分析、健诊结论及调整建议均基于报告日的市场环境与持仓情况，可能随市场变化而调整，投资者不应将其作为投资决策的唯一依据。'
+    '投资者在投资基金前，应认真阅读《基金合同》《招募说明书》《产品资料概要》等基金法律文件，充分了解基金的风险收益特征，结合自身的投资目的、投资期限、投资经验、资产状况及风险承受能力，独立做出投资决策并自行承担投资风险。'
+    '基金管理人提醒投资者遵循基金投资 "买者自负" 原则，在做出投资决策后，基金运营状况与基金净值变化引致的投资风险，由投资者自行负担。'
+    '本报告所载数据来源于公开渠道及客户提供资料，基金管理人不对该等信息的准确性、完整性和及时性作出保证。'
+)
+
 
 def q(local: str) -> str:
     return f"{{{W}}}{local}"
@@ -35,11 +44,13 @@ def q(local: str) -> str:
 PARAGRAPH_INDEX = {
     "title": 0,
     "meta": 1,
+    "review_part1_heading": 2,
     "review_equity_title": 3,
     "review_equity_text": 4,
     "review_account_text": 5,
     "review_fixed_income_title": 6,
     "review_fixed_income_text": 7,
+    "outlook_part2_heading": 8,
     "outlook_equity_title": 9,
     "outlook_equity_text": 10,
     "outlook_allocation_title": 11,
@@ -48,6 +59,10 @@ PARAGRAPH_INDEX = {
     "overview_text": 17,
     "holdings_note": 20,
     "structure_text": 22,
+    "asset_note": 22,
+    "industry_heading": 21,
+    "industry_note": 20,
+    "comparison_heading": 23,
     "comparison_text": 24,
     "index_heading": 25,
     "index_note": 27,
@@ -63,6 +78,7 @@ PARAGRAPH_INDEX = {
     "operations_title": 40,
     "holdings_subtitle": 42,
     "new_products_subtitle": 45,
+    "execution_heading": 45,
     "execution_text": 47,
     "scenario_up": 49,
     "scenario_flat": 50,
@@ -186,7 +202,64 @@ def set_repeat_header(row):
         E.SubElement(trpr, q("tblHeader"))
 
 
-def fill_table(tbl, rows, total_last=False):
+def normalize_lookthrough_rows(tbl):
+    """资产表/行业表/指数表数据行统一：居中对齐、微软雅黑、7.5pt、浅灰细边框。
+
+    修复三类问题：模板原型列对齐不同导致数值列（如穿透金额）左对齐；
+    flat_first_col 拆分纵向合并格后新写入的 run 丢失字体，渲染成异体字；
+    vMerge 拆分后格子缺上/下边框，渲染成黑色粗线。
+    """
+    rows = tbl.findall("w:tr", NS)
+    for row in rows[1:]:
+        tcs = row.findall("w:tc", NS)
+        for ci, tc in enumerate(tcs):
+            tcPr = tc.find(q("tcPr"))
+            if tcPr is None:
+                tcPr = E.Element(q("tcPr"))
+                tc.insert(0, tcPr)
+            borders = tcPr.find(q("tcBorders"))
+            if borders is None:
+                borders = E.SubElement(tcPr, q("tcBorders"))
+            for side in ("top", "left", "bottom", "right"):
+                bd = borders.find(q(side))
+                if bd is None:
+                    bd = E.SubElement(borders, q(side))
+                bd.set(q("val"), "single")
+                bd.set(q("sz"), "4")
+                bd.set(q("space"), "0")
+                bd.set(q("color"), "D9E2EA")
+            for p in tc.findall("w:p", NS):
+                ppr = p.find(q("pPr"))
+                if ppr is None:
+                    ppr = E.Element(q("pPr"))
+                    p.insert(0, ppr)
+                jc = ppr.find(q("jc"))
+                if jc is None:
+                    jc = E.SubElement(ppr, q("jc"))
+                jc.set(q("val"), "center")
+            for r in tc.findall(".//w:r", NS):
+                rPr = r.find(q("rPr"))
+                if rPr is None:
+                    rPr = E.Element(q("rPr"))
+                    r.insert(0, rPr)
+                fonts = rPr.find(q("rFonts"))
+                if fonts is None:
+                    fonts = E.Element(q("rFonts"))
+                    rPr.insert(0, fonts)
+                for attr in ("ascii", "eastAsia", "hAnsi"):
+                    fonts.set(q(attr), "微软雅黑")
+                sz = rPr.find(q("sz"))
+                if sz is None:
+                    sz = E.SubElement(rPr, q("sz"))
+                    sz.set(q("val"), "15")
+                if ci == 0:
+                    # 分类列（第一列）统一加粗，修复 vMerge 拆分格继承原型不加粗的问题
+                    b = rPr.find(q("b"))
+                    if b is None:
+                        b = E.SubElement(rPr, q("b"))
+
+
+def fill_table(tbl, rows, total_last=False, flat_first_col=False):
     old_rows = tbl.findall("w:tr", NS)
     if len(old_rows) < 2:
         raise ValueError("模板表格缺少数据行原型")
@@ -199,6 +272,8 @@ def fill_table(tbl, rows, total_last=False):
             row = deepcopy(total_prototype)
         else:
             row = deepcopy(prototypes[index % len(prototypes)])
+        if flat_first_col:
+            clear_vmerge(row.findall("w:tc", NS)[0])
         cells = row.findall("w:tc", NS)
         if len(cells) != len(values):
             raise ValueError(f"表格列数不匹配：模板 {len(cells)}，输入 {len(values)}")
@@ -210,6 +285,15 @@ def fill_table(tbl, rows, total_last=False):
             set_cell(cell, str(text), color)
         tbl.append(row)
     set_repeat_header(old_rows[0])
+
+
+def clear_vmerge(tc) -> None:
+    """移除单元格的纵向合并标记，避免复制模板纵向合并列后文字被隐藏。"""
+    tcPr = tc.find(q("tcPr"))
+    if tcPr is None:
+        return
+    for vm in tcPr.findall(q("vMerge")):
+        tcPr.remove(vm)
 
 
 def add_hyperlink_paragraph(body, anchor, prototype, rels, rel_ids, label, url):
@@ -242,7 +326,11 @@ def add_hyperlink_paragraph(body, anchor, prototype, rels, rel_ids, label, url):
 
 def build(input_path: Path, output_path: Path, template_path: Path):
     data = json.loads(input_path.read_text(encoding="utf-8"))
-    required = {"paragraphs", "holdings", "indices", "operations", "holding_details", "new_product_details", "core_conclusion", "sources"}
+    required = {
+        "paragraphs", "holdings", "asset_allocation", "industry_allocation",
+        "indices", "operations", "holding_details", "new_product_details",
+        "core_conclusion", "sources"
+    }
     missing = sorted(required - data.keys())
     if missing:
         raise ValueError("缺少顶层字段：" + ", ".join(missing))
@@ -267,9 +355,58 @@ def build(input_path: Path, output_path: Path, template_path: Path):
         raise ValueError("模板结构不匹配：需要至少57个正文段落和4个表格")
     originals = [deepcopy(p) for p in paragraphs]
 
+    inserted_paragraph_keys = {"asset_note", "industry_heading", "industry_note", "execution_heading"}
     for key, index in PARAGRAPH_INDEX.items():
+        if key in inserted_paragraph_keys:
+            continue
         text = str(data["paragraphs"][key])
         rewrite(paragraphs[index], text, first_sentence_lead(text) if key in LEAD_KEYS else None)
+
+    # Keep "3. 操作节奏" identical to the preceding group subtitles.
+    execution_heading = deepcopy(originals[45])
+    rewrite(execution_heading, str(data["paragraphs"]["execution_heading"]))
+    clear_for_natural_flow(execution_heading)
+    paragraphs[47].addprevious(execution_heading)
+
+    # Add the latest look-through modules without changing the sanitized source template.
+    asset_table = deepcopy(tables[1])
+    asset_headers = asset_table.findall("w:tr", NS)[0].findall("w:tc", NS)
+    for cell, label in zip(asset_headers, ["大类资产", "穿透金额（万元）", "占组合", "主要来源"]):
+        set_cell(cell, label)
+    asset_rows = [
+        [x["category"], f"{number(x['amount_wan']):.2f}", pct(x["weight_pct"], signed=False), x["source"]]
+        for x in data["asset_allocation"]
+    ]
+    fill_table(asset_table, asset_rows, flat_first_col=True)
+    normalize_lookthrough_rows(asset_table)
+    paragraphs[22].addnext(asset_table)
+
+    asset_note = deepcopy(originals[20])
+    rewrite(asset_note, str(data["paragraphs"]["asset_note"]))
+    clear_for_natural_flow(asset_note)
+    asset_table.addnext(asset_note)
+
+    industry_heading = deepcopy(originals[21])
+    rewrite(industry_heading, str(data["paragraphs"]["industry_heading"]))
+    clear_for_natural_flow(industry_heading)
+    asset_note.addnext(industry_heading)
+
+    industry_table = deepcopy(tables[1])
+    industry_headers = industry_table.findall("w:tr", NS)[0].findall("w:tc", NS)
+    for cell, label in zip(industry_headers, ["行业方向及主要来源", "穿透金额（万元）", "占总资产", "占已识别敞口"]):
+        set_cell(cell, label)
+    industry_rows = [
+        [x["industry_source"], f"{number(x['amount_wan']):.2f}", pct(x["portfolio_pct"], signed=False), pct(x["identified_pct"], signed=False)]
+        for x in data["industry_allocation"]
+    ]
+    fill_table(industry_table, industry_rows, flat_first_col=True)
+    normalize_lookthrough_rows(industry_table)
+    industry_heading.addnext(industry_table)
+
+    industry_note = deepcopy(originals[20])
+    rewrite(industry_note, str(data["paragraphs"]["industry_note"]))
+    clear_for_natural_flow(industry_note)
+    industry_table.addnext(industry_note)
 
     # The canonical template contains exactly two holding-detail prototypes and
     # one new-product prototype. Replace them with a variable number of paragraphs.
@@ -329,7 +466,8 @@ def build(input_path: Path, output_path: Path, template_path: Path):
         index_rows.append(
             [item["market"], item["name_code"], (pct(month_ret), value_color(month_ret)), (pct(two_ret), value_color(two_ret))]
         )
-    fill_table(tables[1], index_rows)
+    fill_table(tables[1], index_rows, flat_first_col=True)
+    normalize_lookthrough_rows(tables[1])
 
     conclusion_paragraphs = tables[2].findall(".//w:p", NS)
     if len(conclusion_paragraphs) < 2:
@@ -346,6 +484,11 @@ def build(input_path: Path, output_path: Path, template_path: Path):
 
     rels = E.fromstring(parts["word/_rels/document.xml.rels"])
     rel_ids = {node.get("Id") for node in rels.findall(f"{{{PKG_REL}}}Relationship")}
+    disclaimer = deepcopy(originals[54])
+    rewrite(disclaimer, MANDATORY_DISCLAIMER)
+    clear_for_natural_flow(disclaimer)
+    paragraphs[56].addprevious(disclaimer)
+
     source_anchor = paragraphs[56]
     source_prototype = originals[56]
     for item in data["sources"]:
@@ -361,6 +504,52 @@ def build(input_path: Path, output_path: Path, template_path: Path):
             node.getparent().remove(node)
         for node in p.findall(".//w:br[@w:type='page']", NS):
             node.getparent().remove(node)
+
+    # 深蓝底表头统一样式：居中、微软雅黑、加粗、8pt、白字。
+    # 修复资产表/行业表/指数表表头因模板原型不同而出现的左对齐或异体字问题。
+    for tbl in body.findall("w:tbl", NS):
+        rows = tbl.findall("w:tr", NS)
+        if not rows:
+            continue
+        for tc in rows[0].findall("w:tc", NS):
+            tcPr = tc.find(q("tcPr"))
+            if tcPr is None:
+                continue
+            shd = tcPr.find(q("shd"))
+            fill = shd.get(q("fill")) if shd is not None else None
+            if not fill or fill.upper() != "17365D":
+                continue
+            for p in tc.findall("w:p", NS):
+                ppr = p.find(q("pPr"))
+                if ppr is None:
+                    ppr = E.Element(q("pPr"))
+                    p.insert(0, ppr)
+                jc = ppr.find(q("jc"))
+                if jc is None:
+                    jc = E.SubElement(ppr, q("jc"))
+                jc.set(q("val"), "center")
+            for r in tc.findall(".//w:r", NS):
+                rPr = r.find(q("rPr"))
+                if rPr is None:
+                    rPr = E.Element(q("rPr"))
+                    r.insert(0, rPr)
+                fonts = rPr.find(q("rFonts"))
+                if fonts is None:
+                    fonts = E.Element(q("rFonts"))
+                    rPr.insert(0, fonts)
+                for attr in ("ascii", "eastAsia", "hAnsi"):
+                    fonts.set(q(attr), "微软雅黑")
+                b = rPr.find(q("b"))
+                if b is None:
+                    b = E.SubElement(rPr, q("b"))
+                sz = rPr.find(q("sz"))
+                if sz is None:
+                    sz = E.SubElement(rPr, q("sz"))
+                sz.set(q("val"), "16")
+                col = rPr.find(q("color"))
+                if col is None:
+                    col = E.SubElement(rPr, q("color"))
+                col.set(q("val"), "FFFFFF")
 
     settings = E.fromstring(parts["word/settings.xml"])
     update = settings.find("w:updateFields", NS)
